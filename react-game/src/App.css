@@ -1,0 +1,10 @@
+body {
+  font-family: "Bungee", sans-serif;
+  background-color: #131313;
+  text-align: center;
+  text-transform: uppercase;
+}
+.board{
+  border: 1px solid #777777;
+  outline: 1px solid #333333;
+}
