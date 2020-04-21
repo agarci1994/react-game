@@ -8,6 +8,12 @@ UP: {x: 0, y: -UNIT},
 DOWN: {x: 0, y: UNIT}
 }
 
+export const GAME_READY = 1
+export const GAME_PLAYING = 2
+export const GAME_ENDED= 0
+
+
+
 export const PLAYER_ONE = {
     color: '#CC0000',
     id: '1',
@@ -19,7 +25,8 @@ export const PLAYER_ONE = {
     },
     direction: DIRECTION.RIGHT,
     position: {x: UNIT * 6, y: UNIT * 6},
-    
+    hasDied: false,
+    instructions: "Flechas de dirección"
 }
 
 export const PLAYER_TWO = {
@@ -35,5 +42,7 @@ export const PLAYER_TWO = {
         position: {
             x: UNIT * 43,
             y: UNIT * 43
-        }
+        },
+    hasDied: false,
+    instructions: "TECLAS AWSD"
 }

@@ -1,24 +1,67 @@
 import React, { useEffect, useReducer } from "react";
 import Board from "./components/Board";
-import { BOARD_SIZE, PLAYER_ONE, PLAYER_TWO, UNIT } from "./config/const";
+import Start from "./components/Start";
+import Result from "./components/Result";
+import {
+  BOARD_SIZE,
+  PLAYER_ONE,
+  PLAYER_TWO,
+  UNIT,
+  GAME_ENDED,
+  GAME_PLAYING,
+  GAME_READY
+} from "./config/const";
 import useInterval from "./hooks/useInterval";
 import sumCoordinates from "./utils/sumCoordinates";
+import getCellKey from "./utils/getCellKey";
+import getPlayableCells from "./utils/getPlayableCells";
 import playerCanChangeToDirection from "./utils/playerCanChangeToDirection";
 import "./App.css";
 
+let result = null
 const players = [PLAYER_ONE, PLAYER_TWO];
-const game = { players, playableCells: "hoa" };
+const initialState = {
+  players,
+  playableCells: getPlayableCells(
+    BOARD_SIZE,
+    UNIT,
+    players.map(player => getCellKey(player.position.x, player.position.y))
+  ),
+  gameStatus: GAME_READY
+};
 
-const updateGame = (players, action) => {
+const updateGame = (game, action) => {
   if (action.type === "move") {
-    const newPlayers = players.map(player => ({
+    const newPlayers = game.players.map(player => ({
       ...player,
       position: sumCoordinates(player.position, player.direction)
     }));
-    return newPlayers;
+
+    const newPlayersWithCollision = newPlayers.map(player => {
+      const myCellKey = getCellKey(player.position.x, player.position.y);
+      return {
+        ...player,
+        hasDied:
+          !game.playableCells.includes(myCellKey) ||
+          newPlayers
+            .filter(p => p.id !== player.id)
+            .map(p => getCellKey(p.position.x, p.position.y))
+            .includes(myCellKey)
+      };
+    });
+
+    const newOcupiedCell = game.players.map(player =>
+      getCellKey(player.position.x, player.position.y)
+    );
+    const playableCells = game.playableCells.filter(
+      playableCells => !newOcupiedCell.includes(playableCells)
+    );
+
+    return { players: newPlayersWithCollision, playableCells: playableCells, gameStatus: newPlayersWithCollision.filter(player => player.hasDied).length ===  0 ? GAME_PLAYING : GAME_ENDED };
   }
+
   if (action.type === "changeDirection") {
-    const newPlayers = players.map(player => ({
+    const newPlayers = game.players.map(player => ({
       ...player,
       direction:
         player.keys[action.key] &&
@@ -27,16 +70,28 @@ const updateGame = (players, action) => {
           : player.direction
     }));
 
-    return newPlayers;
+    return { players: newPlayers, playableCells: game.playableCells, gameStatus: game.gameStatus };
+  }
+  if (action.type === "start"){
+    return {...initialState, gameStatus: GAME_PLAYING}
+  }
+  if (action.type === "restart") {
+    return { ...initialState, gameStatus: GAME_READY }
   }
 };
 
 function App() {
-  const [players, gameDispatch] = useReducer(updateGame, initialState);
+  const [game, gameDispatch] = useReducer(updateGame, initialState);
+  const players = game.players;
+  const diedPlayer = players.filter(player => player.hasDied);
+  const audio = new Audio("../audioGame.mp3");
 
-  useInterval(() => {
-    gameDispatch({ type: "move" });
-  }, 100);
+  useInterval(
+    () => {
+      gameDispatch({ type: "move" });
+    },
+    game.gameStatus !== GAME_PLAYING ? null : 100
+  );
 
   useEffect(() => {
     const handleKeyPress = ({ keyCode }) =>
@@ -47,9 +102,23 @@ function App() {
     };
   }, []);
 
+const handleStart = () => {
+  audio.play()
+  gameDispatch({type: "start"})
+}
+const handleRestart = () => gameDispatch({type: "restart"})
+
+if (game.gameStatus === GAME_ENDED){
+  const winningPlayers = game.players.filter(player => !player.hasDied)
+  if (winningPlayers.length === 0) {result = "Empate"}
+  else {result = `Ganador: ${winningPlayers.map(player => `jugador ${player.id}`).join('.')}`}
+}
+
   return (
     <div className="App">
-      <Board players={players} />
+      {game.gameStatus === GAME_READY && <Start onClick={handleStart} />}
+      {game.gameStatus === GAME_ENDED && <Result onClick={handleRestart} result={result} />}
+      <Board players={game.players} gameStatus={game.gameStatus}/>
     </div>
   );
 }
